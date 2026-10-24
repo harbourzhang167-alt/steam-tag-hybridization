@@ -1,0 +1,46 @@
+# --- raw / large data: never commit -----------------------------------------
+01_data/raw/
+*.pkl
+*.parquet
+*.h5
+extension_sample.pkl
+
+# --- third-party material, not redistributed ---------------------------------
+03_literature/
+08_ref_txt/
+*.pdf
+
+# --- internal scratch, backups, superseded artefacts -------------------------
+05_archive/
+github_repo/
+internal/
+private_notes/
+*.ipynb.bak-*
+*.bak
+*~
+
+# --- python ------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- OS / editor -------------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# --- secrets -----------------------------------------------------------------
+.env
+.env.*
+*.token
+*.pem
+secrets.json

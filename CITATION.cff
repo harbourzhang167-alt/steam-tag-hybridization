@@ -1,0 +1,85 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite this repository and the accompanying manuscript."
+title: "Steam Tag Hybridization: measuring category spanning as distance rather than count"
+abstract: >-
+  A reproducible research codebase for quantifying tag hybridization in indie
+  video games on Steam. It (i) audits an existing count-based pipeline for
+  reproducibility, and (ii) replaces the count index with dispersion-based
+  measures built on a continuous tag embedding: coherence (concentration across
+  tag domains) and spanning distance (how far apart the spanned domains are).
+  Reports a null-model test showing that the Steam tag network has genuine
+  community structure (z = 118.5 against a degree-preserving null), evidence
+  that hard partitions of that structure are fragile, and the finding that
+  partition-free tag-level distance is the robust measure.
+authors:
+  - family-names: "Zhang"
+    given-names: "Harbour"
+    # orcid: "https://orcid.org/0000-0000-0000-0000"
+version: 0.1.0
+date-released: "2026-10-24"
+license: MIT
+keywords:
+  - video games
+  - Steam
+  - tags
+  - category spanning
+  - community detection
+  - NPMI
+  - Louvain
+  - reproducibility
+references:
+  - type: article
+    title: "Conceptual Spaces and the Consequences of Category Spanning"
+    authors:
+      - family-names: "Kovács"
+        given-names: "Balázs"
+      - family-names: "Hannan"
+        given-names: "Michael T."
+    journal: "Sociological Science"
+    volume: 2
+    start: 252
+    end: 286
+    year: 2015
+    doi: "10.15195/v2.a13"
+  - type: article
+    title: "Beyond Genre Categories: How Narrative Pattern Coherence and Spanning Distance Shape Film Success"
+    authors:
+      - family-names: "Wang"
+        given-names: "Zhichao"
+      - family-names: "Lyu"
+        given-names: "Zeyu"
+    conference:
+      name: "Proceedings of the 6th International Conference on Natural Language Processing for the Digital Humanities (NLP4DH)"
+    start: 132
+    end: 137
+    year: 2026
+    doi: "10.18653/v1/2026.nlp4dh-1.13"
+  - type: article
+    title: "A Preliminary Network Analysis on Steam Game Tags: Another Way of Understanding Game Genres"
+    authors:
+      - family-names: "Li"
+        given-names: "Xiaozhou"
+      - family-names: "Zhang"
+        given-names: "Boyang"
+    conference:
+      name: "Academic Mindtrek 2020 (AcademicMindtrek '20)"
+    start: 65
+    end: 73
+    year: 2020
+    doi: "10.1145/3377290.3377300"
+  - type: article
+    title: "When does category spanning hurt or help producers?"
+    authors:
+      - family-names: "Ahn"
+        given-names: "Jungsoo"
+      - family-names: "Vergne"
+        given-names: "Jean-Philippe"
+      - family-names: "Sharkey"
+        given-names: "Amanda"
+    journal: "Strategic Management Journal"
+    volume: 47
+    issue: 7
+    start: 1907
+    end: 1934
+    year: 2026
+    doi: "10.1002/smj.70079"

@@ -1,0 +1,9 @@
+﻿cluster_id,n_games,share_pct,defining_meta_tags,mean_hybrid_index,median_hybrid_index,min_hybrid_index,max_hybrid_index
+0,2060,11.65,Adventure/Narrative; Story-Driven; Mood (Dark); Perspective; Atmospheric,11.863,12.0,3,18
+1,3238,18.31,Action; Perspective; Shooter; Art Style; Adventure/Narrative,8.603,9.0,1,18
+2,2462,13.92,RPG; Adventure/Narrative; Perspective; Art Style; Strategy,10.14,11.0,1,17
+3,1605,9.07,Casual; Mood (Positive); Perspective; Puzzle/Board; Art Style,11.368,12.0,3,20
+4,2880,16.28,Adventure/Narrative; Casual; Art Style; Adult; Story-Driven,6.372,6.0,0,17
+5,1542,8.72,Simulation; Core System; Perspective; Adventure/Narrative; Action,11.228,11.0,4,17
+6,1232,6.97,Platformer; Action; Perspective; Adventure/Narrative; Art Style,11.931,12.0,3,18
+7,2667,15.08,Simulation; Strategy; Casual; Perspective; Sports/Racing,7.076,7.0,1,17

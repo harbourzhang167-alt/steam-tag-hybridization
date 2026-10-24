@@ -1,0 +1,19 @@
+# Normalise line endings: keep LF in the repo on every platform.
+* text=auto eol=lf
+
+# Source
+*.py     text eol=lf
+*.md     text eol=lf
+*.cff    text eol=lf
+*.txt    text eol=lf
+*.json   text eol=lf
+*.html   text eol=lf
+
+# Notebooks: never let git try to diff/merge them as text
+*.ipynb  -text diff=jupyter linguist-documentation=false
+
+# Data (binary-ish; no eol conversion)
+*.csv    text eol=lf
+*.png    binary
+*.pdf    binary
+*.pkl    binary

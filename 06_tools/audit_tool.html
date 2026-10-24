@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>Steam 管线产物核查工具 (Audit Tool)</title>
+<style>
+  :root { --bg:#0f1420; --card:#18202f; --line:#2a3446; --fg:#e8edf5; --muted:#9aa8bd; --acc:#4da3ff; --ok:#3ddc97; --warn:#ffb454; --bad:#ff6b6b; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:28px; background:var(--bg); color:var(--fg); font:14px/1.6 "Segoe UI","Microsoft YaHei",system-ui,sans-serif; }
+  h1 { font-size:22px; margin:0 0 6px; }
+  h2 { font-size:16px; margin:26px 0 10px; color:var(--acc); border-bottom:1px solid var(--line); padding-bottom:6px; }
+  p.lead { color:var(--muted); margin:0 0 18px; max-width:1000px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin-bottom:16px; }
+  button { background:var(--acc); color:#06101f; border:0; border-radius:8px; padding:10px 18px; font-weight:600; font-size:14px; cursor:pointer; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  button.ghost { background:transparent; color:var(--acc); border:1px solid var(--acc); }
+  table { border-collapse:collapse; width:100%; margin:8px 0 4px; font-size:13px; }
+  th,td { border:1px solid var(--line); padding:5px 9px; text-align:right; }
+  th:first-child, td:first-child { text-align:left; }
+  th { background:#131b28; color:var(--muted); font-weight:600; }
+  code { background:#101827; padding:1px 6px; border-radius:4px; color:#cfe3ff; }
+  .ok { color:var(--ok); } .warn { color:var(--warn); } .bad { color:var(--bad); }
+  .row { display:flex; gap:14px; flex-wrap:wrap; align-items:center; }
+  .kpi { flex:1 1 160px; background:#131b28; border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  .kpi b { display:block; font-size:19px; }
+  .kpi span { color:var(--muted); font-size:12px; }
+  .log { font-family:Consolas,monospace; font-size:12px; color:var(--muted); max-height:150px; overflow:auto; white-space:pre-wrap; }
+  details summary { cursor:pointer; color:var(--acc); }
+</style>
+</head>
+<body>
+<h1>Steam 管线产物核查工具</h1>
+<p class="lead">
+  本机沙箱禁止命令行执行（host 侧 ACL 失败），因此把 <code>_tools/audit_outputs.py</code> 的总体统计改为浏览器内计算：
+  文件完全不上传、不联网，全部在本地页面内用 JavaScript 解析。用法：点击按钮 → 选择 <code>games_clustered_meta_export.csv</code>
+  （如需分簇核查，再选 <code>cluster_megatag_reference.csv</code> 与 <code>cluster_cohens_h_tags.csv</code>）。结果可复制粘贴回文档。
+</p>
+
+<div class="card">
+  <div class="row">
+    <button id="pick">选择 CSV 文件…</button>
+    <button id="demo" class="ghost">载入内置样例（3 行，自检）</button>
+    <input id="files" type="file" accept=".csv" multiple hidden />
+    <span id="status" class="warn">等待文件…</span>
+  </div>
+  <div id="progress" class="log" style="margin-top:10px"></div>
+</div>
+
+<div id="out"></div>
+
+<script>
+const DEMO = `appid,name,Release_Year,Clean_Priority_Tags,Meta_Tags,Game_Cluster,in_focus_cluster,Total_Reviews,positive,negative,price,Hybridization_Index,Log_Reviews,Hybrid_Centered,Hybrid_Centered_Squared
+252490,Rust,2018,Survival; Crafting,Perspective; Adult; Shooter; Action; Other Themes; Core System; Simulation; Adventure/Narrative,4,1,1195980,1043708,152272,39.99,8,13.9944773270789,-1.3246635757096,1.7547335888117435
+413150,Stardew Valley,2016,Farming Sim; Pixel Graphics,Perspective; RPG; Art Style; Core System; Mood (Positive); Casual; Simulation; Fishing; Adventure/Narrative,2,1,854853,841413,13440,14.99,9,13.65868597310379,-0.3246635757096,0.1054064373925432
+739630,Phasmophobia,2020,Horror; VR,Perspective; Mood (Dark); Action; Fantasy/Magic; Tactical; Story-Driven,5,1,754960,723620,31340,19.99,6,13.5344213712678,-3.3246635757096,11.0533878916501`;
+
+/* ---------- minimal RFC4180 CSV parser (handles quotes, CRLF, embedded commas) ---------- */
+function parseCSV(text){
+  const rows=[]; let row=[], field="", inQ=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(inQ){
+      if(c==='"'){ if(text[i+1]==='"'){ field+='"'; i++; } else inQ=false; }
+      else field+=c;
+    } else {
+      if(c==='"') inQ=true;
+      else if(c===','){ row.push(field); field=""; }
+      else if(c==='\n'){ row.push(field); field=""; rows.push(row); row=[]; }
+      else if(c==='\r'){ /* skip */ }
+      else field+=c;
+    }
+  }
+  if(field.length||row.length){ row.push(field); rows.push(row); }
+  if(rows.length && rows[rows.length-1].length===1 && rows[rows.length-1][0]==="") rows.pop();
+  return rows;
+}
+const num = v => { const x=parseFloat(v); return Number.isFinite(x)?x:NaN; };
+const f = (x,d=3) => Number.isFinite(x)? x.toFixed(d) : "—";
+const pct = (a,b) => b? (100*a/b).toFixed(2)+"%" : "—";
+
+function median(arr){ if(!arr.length) return NaN; const a=[...arr].sort((x,y)=>x-y); const m=a.length>>1; return a.length%2? a[m] : (a[m-1]+a[m])/2; }
+function mean(arr){ return arr.length? arr.reduce((s,x)=>s+x,0)/arr.length : NaN; }
+function describe(arr,label){
+  const a=arr.filter(Number.isFinite);
+  if(!a.length) return {label,n:0};
+  const m=mean(a), sd=Math.sqrt(mean(a.map(x=>(x-m)**2)));
+  const s=[...a].sort((x,y)=>x-y), q=p=>s[Math.min(s.length-1,Math.floor(p*s.length))];
+  return {label,n:a.length,mean:m,std:sd,min:s[0],p25:q(.25),median:median(a),p75:q(.75),max:s[s.length-1]};
+}
+function descTable(rows){
+  let h='<table><tr><th>变量</th><th>N</th><th>mean</th><th>std</th><th>min</th><th>p25</th><th>median</th><th>p75</th><th>max</th></tr>';
+  for(const d of rows){
+    h+=`<tr><td>${d.label}</td><td>${d.n}</td><td>${f(d.mean)}</td><td>${f(d.std)}</td><td>${f(d.min)}</td><td>${f(d.p25)}</td><td>${f(d.median)}</td><td>${f(d.p75)}</td><td>${f(d.max)}</td></tr>`;
+  }
+  return h+'</table>';
+}
+function corr(xs,ys){
+  const p=xs.map((x,i)=>[x,ys[i]]).filter(([a,b])=>Number.isFinite(a)&&Number.isFinite(b));
+  if(p.length<3) return NaN;
+  const mx=mean(p.map(d=>d[0])), my=mean(p.map(d=>d[1]));
+  let sxy=0,sxx=0,syy=0;
+  for(const [a,b] of p){ sxy+=(a-mx)*(b-my); sxx+=(a-mx)**2; syy+=(b-my)**2; }
+  return sxy/Math.sqrt(sxx*syy);
+}
+function corrTable(names, cols, idx){
+  let h='<table><tr><th>Pearson r</th>'+names.map(n=>`<th>${n}</th>`).join('')+'</tr>';
+  names.forEach((n,i)=>{
+    h+=`<tr><td>${n}</td>`;
+    names.forEach((m,j)=>{
+      const r = i===j? 1 : corr(idx.map(k=>cols[i][k]), idx.map(k=>cols[j][k]));
+      h+=`<td class="${Number.isFinite(r)&&Math.abs(r)>0.6?'warn':''}">${f(r,4)}</td>`;
+    });
+    h+='</tr>';
+  });
+  return h+'</table>';
+}
+
+let HEADER=null;
+function auditGameLevel(rows, log){
+  const head=rows[0].map(s=>s.trim());
+  HEADER=head;
+  const col=n=>head.indexOf(n);
+  const D=rows.slice(1).filter(r=>r.length>1 && r[col('appid')]!=='');
+  log(`games_clustered_meta_export.csv：${D.length} 数据行 × ${head.length} 列`);
+  const g=(n)=>D.map(r=>num(r[col(n)]));
+  const appid=g('appid'), price=g('price'), tr=g('Total_Reviews'), hx=g('Hybridization_Index'),
+        lr=g('Log_Reviews'), hc=g('Hybrid_Centered'), hc2=g('Hybrid_Centered_Squared'),
+        yr=g('Release_Year'), cl=g('Game_Cluster');
+
+  /* KPI */
+  const nZeroPrice=price.filter(x=>x===0).length, nExp=price.filter(x=>x>=100).length;
+  const nZeroHyb=hx.filter(x=>x===0).length, dup=new Set(appid).size!==appid.length;
+  let out='<div class="card"><h2>总览</h2><div class="row">';
+  out+=`<div class="kpi"><b>${D.length}</b><span>游戏数（数据行）</span></div>`;
+  out+=`<div class="kpi"><b>${f(mean(hx))}</b><span>Hybridization_Index 均值</span></div>`;
+  out+=`<div class="kpi"><b>${median(hx)}</b><span>杂交度中位数</span></div>`;
+  out+=`<div class="kpi"><b>${f(mean(lr))}</b><span>Log_Reviews 均值</span></div>`;
+  out+=`<div class="kpi"><b>${nZeroHyb}</b><span>杂交度=0（回归中剔除）</span></div>`;
+  out+=`<div class="kpi"><b>${nZeroPrice}</b><span>价格=0（${pct(nZeroPrice,D.length)}）</span></div>`;
+  out+=`<div class="kpi"><b>${nExp}</b><span>价格≥100（${pct(nExp,D.length)}）</span></div>`;
+  out+=`<div class="kpi"><b>${dup?'重复':'唯一'}</b><span>appid 唯一性</span></div>`;
+  out+='</div></div>';
+
+  /* describe */
+  out+='<div class="card"><h2>描述统计</h2>'+descTable([
+    describe(price,'price'),describe(tr,'Total_Reviews'),describe(hx,'Hybridization_Index'),
+    describe(lr,'Log_Reviews'),describe(hc,'Hybrid_Centered'),describe(hc2,'Hybrid_Centered_Squared'),
+  ].filter(d=>d.n>0))+'</div>';
+
+  /* corr */
+  const names=['price','Hybridization_Index','Log_Reviews','Total_Reviews'];
+  const idx=names.map(n=>n);
+  const cols={price,Hybridization_Index:hx,Log_Reviews:lr,Total_Reviews:tr};
+  out+='<div class="card"><h2>相关系数（Pearson）</h2>'+corrTable(names,names.map(n=>cols[n]),D.map((_,i)=>i))+'</div>';
+
+  /* cluster table */
+  const byC={};
+  D.forEach((r,i)=>{ const c=cl[i]; (byC[c]=byC[c]||[]).push(i); });
+  let ct='<table><tr><th>Cluster</th><th>N</th><th>share</th><th>mean Hybrid</th><th>median Hybrid</th><th>mean Log_Reviews</th><th>mean price</th><th>price=0</th></tr>';
+  Object.keys(byC).map(Number).sort((a,b)=>a-b).forEach(c=>{
+    const ix=byC[c], H=ix.map(i=>hx[i]), L=ix.map(i=>lr[i]), P=ix.map(i=>price[i]);
+    ct+=`<tr><td>簇 ${c}</td><td>${ix.length}</td><td>${pct(ix.length,D.length)}</td><td>${f(mean(H))}</td><td>${median(H)}</td><td>${f(mean(L))}</td><td>${f(mean(P),2)}</td><td>${P.filter(x=>x===0).length}</td></tr>`;
+  });
+  ct+='</table>';
+  out+='<div class="card"><h2>分簇概况</h2>'+ct+'</div>';
+
+  /* year table */
+  const byY={};
+  D.forEach((r,i)=>{ const y=yr[i]; byY[y]=(byY[y]||0)+1; });
+  let yt='<table><tr><th>发行年</th><th>N</th><th>share</th><th>mean Log_Reviews</th><th>mean Hybrid</th></tr>';
+  Object.keys(byY).map(Number).sort((a,b)=>a-b).forEach(y=>{
+    const ix=D.map((_,i)=>i).filter(i=>yr[i]===y);
+    yt+=`<tr><td>${y}</td><td>${ix.length}</td><td>${pct(ix.length,D.length)}</td><td>${f(mean(ix.map(i=>lr[i])))}</td><td>${f(mean(ix.map(i=>hx[i])))}</td></tr>`;
+  });
+  yt+='</table>';
+  out+='<div class="card"><h2>发行年份分布</h2>'+yt+'</div>';
+
+  /* identity checks */
+  const hmean=mean(hx);
+  let okC=0,okS=0,okL=0; const badC=[],badS=[],badL=[];
+  D.forEach((r,i)=>{
+    if(Math.abs(hc[i]-(hx[i]-hmean))<0.01) okC++; else if(badC.length<5) badC.push([r[col('appid')],hx[i],hc[i],hx[i]-hmean]);
+    if(Math.abs(hc2[i]-hc[i]**2)<0.01) okS++; else if(badS.length<5) badS.push([r[col('appid')],hc[i],hc2[i],hc[i]**2]);
+    if(Math.abs(lr[i]-Math.log1p(tr[i]))<0.001) okL++; else if(badL.length<5) badL.push([r[col('appid')],tr[i],lr[i],Math.log1p(tr[i])]);
+  });
+  const line=(name,ok,bad,note)=>`<tr><td>${name}</td><td class="${ok===D.length?'ok':'bad'}">${ok}/${D.length}</td><td>${note}</td><td>${bad.map(b=>b.join(' | ')).join('<br>')||'—'}</td></tr>`;
+  out+='<div class="card"><h2>恒等式一致性检查</h2><table><tr><th>检查项</th><th>通过</th><th>定义</th><th>反例（至多 5 个）</th></tr>'
+    + line('Hybrid_Centered', okC, badC, 'Hybrid − mean(Hybrid)')
+    + line('Hybrid_Centered_Squared', okS, badS, 'Hybrid_Centered²')
+    + line('Log_Reviews', okL, badL, 'ln(1 + Total_Reviews)')
+    + '</table><p class="lead">注：中心化使用的是全样本均值 '+f(hmean,4)+'；若笔记本中 <code>hybrid_mean=9.3247</code> 与本次计算一致，则通过率应为 100%。</p></div>';
+
+  /* meta tag vocabulary (needs the Meta_Tags column, may be truncated in samples) */
+  const mi=col('Meta_Tags'), hi=col('Hybridization_Index');
+  if(mi>=0){
+    const freq=new Map(); let nH=0, sumH=0;
+    D.forEach(r=>{
+      const s=(r[mi]||'').split(';').map(t=>t.trim()).filter(Boolean);
+      s.forEach(t=>freq.set(t,(freq.get(t)||0)+1));
+      if(Number.isFinite(num(r[hi]))) { sumH+=num(r[hi]); }
+      nH++;
+    });
+    const arr=[...freq.entries()].sort((a,b)=>b[1]-a[1]);
+    let mt='<table><tr><th>Meta-Tag 标签</th><th>出现游戏数</th><th>占比</th></tr>';
+    arr.forEach(([t,c])=>{ mt+=`<tr><td>${t}</td><td>${c}</td><td>${pct(c,nH)}</td></tr>`; });
+    mt+='</table>';
+    out+='<div class="card"><details><summary>Meta-Tags 词表（'+arr.length+' 个不同取值，点击展开）</summary>'+mt+'</details></div>';
+  }
+  return out;
+}
+
+function auditSmall(rows, title, log){
+  const head=rows[0].map(s=>s.trim());
+  const D=rows.slice(1).filter(r=>r.length>1&&r.join('').trim()!=='');
+  log(`${title}：${D.length} 行 × ${head.length} 列`);
+  let h='<div class="card"><h2>'+title+'（全量）</h2><table><tr>'+head.map(x=>`<th>${x}</th>`).join('')+'</tr>';
+  D.forEach(r=>{ h+='<tr>'+head.map((_,i)=>`<td>${r[i]??''}</td>`).join('')+'</tr>'; });
+  h+='</table>';
+  // extra: sums for the cluster reference table
+  const nI=head.indexOf('n_games'), sI=head.indexOf('share_pct');
+  if(nI>=0){
+    const sum=D.reduce((s,r)=>s+num(r[nI]),0);
+    const psum=D.reduce((s,r)=>s+(sI>=0?num(r[sI]):0),0);
+    h+=`<p class="lead">Σn_games = <b>${sum}</b>；Σshare_pct = <b>${f(psum,2)}</b>${sI>=0?'（应为 100，允许四舍五入误差）':''}</p>`;
+  }
+  return h+'</div>';
+}
+
+function runText(text, filename){
+  const t0=performance.now();
+  const rows=parseCSV(text);
+  if(!rows.length){ document.getElementById('status').textContent='空文件'; return; }
+  const head=rows[0].join(',').toLowerCase();
+  const logs=[];
+  let html='';
+  if(head.includes('hybridization_index')) html=auditGameLevel(rows, m=>logs.push(m));
+  else if(head.includes('cluster_id')) html=auditSmall(rows, filename, m=>logs.push(m));
+  else html=auditSmall(rows, filename, m=>logs.push(m));
+  logs.push(`解析耗时 ${(performance.now()-t0).toFixed(0)} ms`);
+  document.getElementById('out').insertAdjacentHTML('beforeend', html);
+  document.getElementById('progress').textContent += logs.join('\n')+'\n';
+}
+
+document.getElementById('pick').onclick=()=>document.getElementById('files').click();
+document.getElementById('files').onchange=async (e)=>{
+  document.getElementById('out').innerHTML=''; document.getElementById('progress').textContent='';
+  const files=[...e.target.files];
+  document.getElementById('status').textContent=`已选 ${files.length} 个文件`;
+  for(const file of files){
+    document.getElementById('status').textContent=`读取 ${file.name}…`;
+    const text=await file.text();
+    document.getElementById('status').textContent=`计算 ${file.name}…`;
+    runText(text, file.name);
+  }
+  document.getElementById('status').innerHTML='<span class="ok">完成。可选中下方结果复制回文档。</span>';
+};
+document.getElementById('demo').onclick=()=>{
+  document.getElementById('out').innerHTML=''; document.getElementById('progress').textContent='';
+  document.getElementById('status').textContent='内置样例自检';
+  runText(DEMO,'DEMO');
+  document.getElementById('status').innerHTML='<span class="ok">自检完成（样例仅 3 行，数值不代表真实总体）。</span>';
+};
+</script>
+</body>
+</html>

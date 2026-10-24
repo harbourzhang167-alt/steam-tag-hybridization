@@ -1,0 +1,41 @@
+﻿cluster_id,meta_tag,cohens_h,share_in_cluster,share_global
+0,Story-Driven,1.3204,0.8961,0.3026
+0,Mood (Dark),1.0709,0.751,0.2408
+0,Adventure/Narrative,1.0284,0.9655,0.5841
+0,Atmospheric,1.0103,0.734,0.2501
+0,Exploration,0.7125,0.5087,0.1798
+1,Action,1.4763,0.9929,0.4629
+1,Shooter,0.7519,0.492,0.1527
+1,Arcade/Top-Down Shooter,0.5055,0.2384,0.0648
+1,Arcade,0.4375,0.2637,0.0993
+1,Violent,0.328,0.2017,0.0883
+2,RPG,1.8913,0.9968,0.2895
+2,Fantasy/Magic,0.7094,0.5292,0.197
+2,Turn-Based Combat,0.6424,0.2717,0.0507
+2,Turn-Based,0.5261,0.2238,0.0518
+2,Roguelike,0.4685,0.2677,0.0928
+3,Casual,1.3929,0.9526,0.3711
+3,Mood (Positive),1.2564,0.9003,0.3389
+3,Colorful,0.7513,0.4717,0.1385
+3,Puzzle/Board,0.7368,0.6081,0.2521
+3,Perspective,0.4618,0.8474,0.6507
+4,Casual,0.5257,0.6309,0.3711
+4,Adventure/Narrative,0.4929,0.8073,0.5841
+4,Adult,0.4593,0.2906,0.111
+4,Female Protagonist,0.1865,0.2115,0.1407
+4,Short,0.1554,0.0708,0.0363
+5,Core System,1.5036,0.9475,0.3075
+5,Simulation,1.5018,0.9676,0.3555
+5,Exploration,0.7261,0.5156,0.1798
+5,Immersive Sim,0.4598,0.1907,0.0485
+5,Perspective,0.4553,0.845,0.6507
+6,Platformer,1.8566,0.9375,0.1444
+6,Action,1.1672,0.944,0.4629
+6,Side Scroller,0.8878,0.3912,0.0528
+6,Perspective,0.7362,0.9318,0.6507
+6,Difficult,0.6023,0.3531,0.1082
+7,Strategy,0.9947,0.7398,0.2627
+7,Simulation,0.9645,0.811,0.3555
+7,Tactical,0.3387,0.1594,0.0571
+7,Sports/Racing,0.331,0.2036,0.0888
+7,Military/Combat,0.3132,0.1774,0.0754
