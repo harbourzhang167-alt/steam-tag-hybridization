@@ -1,0 +1,24 @@
+This repository contains two kinds of material with different terms.
+
+## 1. Code — MIT
+
+All source code (Python, notebook, scripts, configurations) is released under
+the MIT License. See LICENSE.
+
+## 2. Derived data — not covered by the MIT grant
+
+The tables in 01_data/processed/ are computed from a third-party public Steam
+dataset (a Kaggle scrape of the Steam store, ~2025-03-10). They are included
+here so that every result and every test in this repository can be reproduced
+without redistributing the 436 MB raw scrape.
+
+These derived tables are **not** relicensed by the MIT grant above. If you
+intend to redistribute them or use them commercially, check the terms of the
+upstream dataset first.
+
+## 3. Third-party material — not redistributed
+
+The reference dissertation and the literature texts consulted for this work are
+not included. Documents that cite paths such as 03_literature/ or 08_ref_txt/
+refer to files in the author's private working copy; the citations themselves
+remain valid.
